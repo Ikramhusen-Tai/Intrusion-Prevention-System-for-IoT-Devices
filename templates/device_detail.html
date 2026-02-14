@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Device Details - {{ device.name or device.ip }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    >
+
+    <style>
+        /* Match main dashboard scale */
+        body {
+            font-size: 1.05rem;
+        }
+
+        .card {
+            margin-bottom: 1.5rem;
+        }
+        .device-meta span.label {
+            font-weight: 600;
+        }
+        .rate-value {
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+        .table-sm td, .table-sm th {
+            padding: 0.25rem 0.5rem;
+        }
+
+        .device-summary {
+            padding-top: 0.75rem !important;
+            padding-bottom: 0.75rem !important;
+        }
+        .device-summary .device-meta p {
+            margin-bottom: 0.25rem !important;
+        }
+        .device-summary hr {
+            margin: 0.75rem 0 !important;
+        }
+
+        .btn-ips {
+            background-color: #4b4b4b;
+            color: #ffffff;
+            border: none;
+        }
+        .btn-ips:hover {
+            background-color: #3a3a3a;
+            color: #ffffff;
+        }
+
+        .btn-ips-outline {
+            border: 1px solid #4b4b4b;
+            color: #4b4b4b;
+            background: transparent;
+        }
+        .btn-ips-outline:hover {
+            background-color: #4b4b4b;
+            color: white;
+        }
+
+        .navbar-nav .nav-link:hover {
+            color: #ffffff !important;
+            background-color: #333333;
+            border-radius: 6px;
+        }
+        .navbar-nav .nav-link.active {
+            color: #00b7ff !important;
+        }
+
+        .card-header {
+            font-weight: 600;
+        }
+    
+
+        .navbar-brand.fs-1 {
+            font-size: clamp(1.35rem, 3.2vw, 2.5rem) !important;
+        }
+        .brand-wrap {
+            display: inline-flex;
+            align-items: center;
+            gap: clamp(6px, 1.2vw, 12px);
+            flex-wrap: wrap;          
+        }
+        .brand-text {
+            line-height: 1.05;
+        }
+        .router-icon {
+            width: clamp(35px, 3.5vw, 60px);
+            height: auto;
+            flex: 0 0 auto;
+            opacity: 0.95;
+        }
+        @media (max-width: 576px) {
+            .brand-wrap { gap: 8px; }
+            .router-icon { width: 22px; }
+        }
+
+
+    </style>
+</head>
+<body class="bg-light">
+
+<nav class="navbar navbar-expand-lg navbar-dark"
+     style="background-color:#1f1f1f; padding: 1rem 1rem;">
+  <div class="container-fluid px-4 px-lg-5">
+
+    <!-- Brand -->
+    <a class="navbar-brand fw-bold fs-1"
+       href="{{ url_for('index') }}"
+       style="letter-spacing:0.5px; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,0.55);">
+      <span class="brand-wrap"><span class="brand-text">Smart Home Router</span>
+      <svg class="router-icon" viewBox="0 0 64 64" fill="none"
+         xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect x="6" y="28" width="52" height="18" rx="3"
+            stroke="white" stroke-width="2"/>
+      <circle cx="18" cy="37" r="2" fill="white"/>
+      <circle cx="26" cy="37" r="2" fill="white"/>
+      <circle cx="34" cy="37" r="2" fill="white"/>
+      <line x1="20" y1="28" x2="14" y2="16"
+            stroke="white" stroke-width="2"/>
+      <line x1="32" y1="28" x2="32" y2="14"
+            stroke="white" stroke-width="2"/>
+      <line x1="44" y1="28" x2="50" y2="16"
+            stroke="white" stroke-width="2"/>
+    </svg>
+    </span>
+    </a>
+
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+            data-bs-target="#mainNavbar">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="mainNavbar">
+      <ul class="navbar-nav ms-auto align-items-lg-center">
+        <li class="nav-item">
+          <a class="nav-link {% if active_page=='devices' %}active fw-semibold{% endif %} fs-5 px-3"
+             href="{{ url_for('index') }}">Devices</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if active_page=='firewall' %}active fw-semibold{% endif %} fs-5 px-3"
+             href="{{ url_for('firewall_page') }}">Firewall</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if active_page=='ips' %}active fw-semibold{% endif %} fs-5 px-3"
+             href="{{ url_for('ips_dashboard') }}">IPS</a>
+        </li>
+           <li class="nav-item">
+          <a class="nav-link {% if active_page=='alerts' %}active fw-semibold{% endif %} fs-5 px-3"
+             href="{{ url_for('ips_alerts_live') }}">
+            Alerts
+            {% if has_unseen_alerts %}
+              <span class="badge bg-danger ms-2" title="New alerts">!</span>
+            {% endif %}
+          </a>
+        </li>
+        
+        <li class="nav-item">
+          <a class="btn btn-sm btn-outline-danger ms-3 px-3 py-2 fw-semibold"
+             href="{{ url_for('logout') }}">
+            Logout
+          </a>
+        </li>
+      </ul>
+    </div>
+
+  </div>
+</nav>
+
+<div class="container-fluid px-4 px-lg-5 py-5">
+
+    <!-- Header / back button -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h1 class="h4 mb-1">Device Details</h1>
+            <p class="text-muted mb-0">
+                Live Traffic and Flow History for This Device
+            </p>
+        </div>
+        <a href="{{ url_for('index') }}" class="btn btn-ips-outline btn-sm">
+            ← Back to Devices
+        </a>
+    </div>
+
+    <!-- Device summary card-->
+    <div class="card device-summary">
+        <div class="card-header">
+            <strong>{{ device.name or "Unknown Device" }}</strong>
+        </div>
+        <div class="card-body">
+            <div class="row device-meta">
+                <div class="col-md-4">
+                    <p><span class="label">IP:</span> {{ device.ip }}</p>
+                    <p><span class="label">MAC:</span> {{ device.mac }}</p>
+                </div>
+                <div class="col-md-4">
+                    <p><span class="label">Vendor:</span> {{ device.vendor or "N/A" }}</p>
+                    <p><span class="label">Model / Type:</span> {{ device.model or "N/A" }}</p>
+                </div>
+                <div class="col-md-4">
+                    <p>
+                        <span class="label">Status:</span>
+                        {% if device.is_online %}
+                            <span class="badge bg-success">Online</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Offline</span>
+                        {% endif %}
+                    </p>
+                    <p>
+                        <span class="label">Last Seen:</span>
+                        {{ device.last_seen | localdt or "N/A" }}
+                    </p>
+                </div>
+            </div>
+
+            <!-- Days selector + actions -->
+            <hr>
+            <form class="row g-2 align-items-center mb-2"
+                  method="get"
+                  action="{{ url_for('device_detail', device_id=device.id) }}">
+                <div class="col-auto">
+                    <label for="days" class="col-form-label">History window:</label>
+                </div>
+                <div class="col-auto">
+                    <select id="days" name="days"
+                            class="form-select form-select-sm"
+                            >
+                        {% for d in [1, 3, 7, 14, 30] %}
+                            <option value="{{ d }}" {% if days == d %}selected{% endif %}>
+                                Last {{ d }} day{{ 's' if d != 1 else '' }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <a href="{{ url_for('sample_traffic', device_id=device.id) }}"
+                       class="btn btn-ips btn-sm">
+                        Take traffic sample now
+                    </a>
+                </div>
+            </form>
+
+            <p class="mb-0">
+                Current Estimated Data Rate:
+                <span id="currentRateValue" class="rate-value">
+                    {{ "%.2f"|format(current_rate_kbps or 0.0) }}
+                </span> kbps
+            </p>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Traffic graph -->
+        <div class="col-lg-6">
+            <div class="card mt-3">
+                <div class="card-header">
+                    Data Rate History (Last {{ days }} Day{{ 's' if days != 1 else '' }})
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <small class="text-muted">
+                            Scroll to zoom. Drag to pan. Use Reset to go back.
+                        </small>
+                        <button type="button"
+                                id="resetZoomBtn"
+                                class="btn btn-ips-outline btn-sm">
+                            Reset Zoom
+                        </button>
+                    </div>
+                    <!-- Bigger chart canvas -->
+                    <canvas id="trafficChart" width="600" height="340"></canvas>
+                    {% if not labels %}
+                        <p class="text-muted mt-2 mb-0">
+                            No traffic samples yet. Click <strong>“Take traffic sample now”</strong> to start.
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Flows table -->
+        <div class="col-lg-6">
+            <div class="card mt-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>Flow History (Last {{ days }} Day{{ 's' if days != 1 else '' }})</span>
+                </div>
+                <div class="card-body">
+
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="small text-muted">
+                            Manage Flow Records
+                        </div>
+
+                        <div class="d-flex align-items-center gap-2">
+                            <a href="{{ url_for('update_flows', device_id=device.id) }}"
+                               class="btn btn-ips-outline btn-sm">
+                                Update Flows Now
+                            </a>
+
+                            <form method="post"
+                                  action="{{ url_for('delete_flows', device_id=device.id) }}"
+                                  class="d-flex align-items-center">
+                                <select name="days_to_delete"
+                                        class="form-select form-select-sm me-2"
+                                        style="width: auto;">
+                                    <option value="0">All History</option>
+                                    {% for d in [1, 3, 7, 14, 30] %}
+                                        <option value="{{ d }}">
+                                            Older than {{ d }} day{{ 's' if d != 1 else '' }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <button type="submit"
+                                        class="btn btn-outline-danger btn-sm"
+                                        onclick="return confirm('Delete selected flow history entries?');">
+                                    Clear Flow History
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive small">
+                        <table class="table table-sm table-hover align-middle" id="flowsTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th scope="col">Protocol</th>
+                                    <th scope="col">Src IP : Port</th>
+                                    <th scope="col">Dst IP : Port</th>
+                                    <th scope="col">Packets</th>
+                                    <th scope="col">Last Seen</th>
+                                </tr>
+                            </thead>
+                            <tbody id="flowsTableBody">
+                                {% for flow in flows %}
+                                <tr>
+                                    <td>{{ flow.protocol }}</td>
+                                    <td>{{ flow.src_ip }}:{{ flow.src_port }}</td>
+                                    <td>{{ flow.dst_ip }}:{{ flow.dst_port }}</td>
+                                    <td>{{ flow.packets or 0 }}</td>
+                                    <td>{{ flow.last_seen|localdt }}</td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">
+                                        No flow records found for this device in the last
+                                        {{ days }} day{{ 's' if days != 1 else '' }}.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div> <!-- /container -->
+
+<!-- Chart.js 3 + Zoom plugin 1 (auto-registers) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@1.2.1/dist/chartjs-plugin-zoom.min.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    const ctx = document.getElementById("trafficChart").getContext("2d");
+    const currentRateEl = document.getElementById("currentRateValue");
+    const daysSelect = document.getElementById("days");
+    const flowsBody = document.getElementById("flowsTableBody");
+    const resetZoomBtn = document.getElementById("resetZoomBtn");
+
+    const initialLabels = {{ labels|tojson }};
+    const initialRates  = {{ rates|tojson }};
+
+    
+let userNavigated = false;
+const DEFAULT_WINDOW = {{ default_chart_window|tojson }};
+
+function setLatestWindow() {
+    const n = trafficChart?.data?.labels?.length || 0;
+    if (n <= 0) return;
+    const win = Math.min(DEFAULT_WINDOW, n);
+    trafficChart.options.scales.x.min = Math.max(0, n - win);
+    trafficChart.options.scales.x.max = n - 1;
+}
+
+function clampWindowToData() {
+    const n = trafficChart?.data?.labels?.length || 0;
+    if (n <= 0) return;
+    const x = trafficChart.options.scales.x;
+    if (typeof x.min === "number") x.min = Math.max(0, Math.min(x.min, n - 1));
+    if (typeof x.max === "number") x.max = Math.max(0, Math.min(x.max, n - 1));
+    if (typeof x.min === "number" && typeof x.max === "number" && x.min > x.max) {
+        x.min = Math.max(0, x.max - 1);
+    }
+}
+
+let trafficChart = new Chart(ctx, {
+    type: "line",
+    data: {
+        labels: initialLabels,
+        datasets: [{
+            label: "Data Rate (kbps)",
+            data: initialRates,
+            borderWidth: 2,
+            tension: 0.3,
+            fill: false,
+            borderColor: "rgba(54, 162, 235, 1)",
+            backgroundColor: "rgba(54, 162, 235, 0.2)",
+            pointBackgroundColor: "rgba(54, 162, 235, 1)",
+            pointBorderColor: "rgba(54, 162, 235, 1)",
+            pointRadius: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        animation: false,
+        interaction: {
+            mode: "nearest",
+            axis: "x",
+            intersect: false
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                max: 12000,
+                title: {
+                    display: true,
+                    text: "kbps"
+                }
+            },
+x: {
+  ticks: {
+    autoSkip: true,
+    maxTicksLimit: 11,
+    includeBounds: true,
+    callback: function(value) {
+      const label = this.getLabelForValue(value);
+      if (!label) return label;
+
+      const parts = label.split(" ");
+      return (parts.length === 2) ? [parts[0], parts[1]] : label;
+    }
+  }
+}
+        },
+        plugins: {
+            legend: {
+                display: true
+            },
+            tooltip: {
+                callbacks: {
+                    title: (items) => (items?.[0]?.label ? items[0].label : "")
+                }
+            },
+            decimation: {
+                enabled: true,
+                algorithm: "min-max"
+            },
+            zoom: {
+                pan: {
+                    enabled: true,
+                    mode: "x",
+                    onPanComplete: () => { userNavigated = true; }
+                },
+                zoom: {
+                    wheel: { enabled: true },
+                    pinch: { enabled: true },
+                    mode: "x",
+                    onZoomComplete: () => { userNavigated = true; }
+                }
+            }
+        }
+    }
+});
+
+setLatestWindow();
+trafficChart.update("none");
+
+if (resetZoomBtn) {
+    resetZoomBtn.addEventListener("click", function () {
+        if (trafficChart && typeof trafficChart.resetZoom === "function") {
+            trafficChart.resetZoom();
+        }
+        userNavigated = false;
+        setLatestWindow();
+        trafficChart.update("none");
+    });
+}
+
+if (daysSelect) {
+    daysSelect.addEventListener("change", function () {
+        userNavigated = false;
+        if (trafficChart && typeof trafficChart.resetZoom === "function") {
+            trafficChart.resetZoom();
+        }
+        refreshTraffic(true);
+    });
+}
+
+    async function refreshTraffic(forceResetView = false) {
+        try {
+            const days = daysSelect ? daysSelect.value : {{ days }};
+            const resp = await fetch(
+                "{{ url_for('device_traffic_json', device_id=device.id) }}?days=" + encodeURIComponent(days)
+            );
+
+            if (!resp.ok) {
+                console.error("traffic_json failed:", resp.status);
+                return;
+            }
+
+            const data = await resp.json();
+            const labels = data.labels || [];
+            const rates  = data.rates  || [];
+
+trafficChart.data.labels = labels;
+trafficChart.data.datasets[0].data = rates;
+
+if (!userNavigated) {
+    setLatestWindow();
+} else {
+    clampWindowToData();
+}
+
+trafficChart.update("none");
+
+            if (currentRateEl && typeof data.current_rate === "number") {
+                currentRateEl.textContent = data.current_rate.toFixed(2);
+            }
+        } catch (err) {
+            console.error("Error refreshing traffic:", err);
+        }
+    }
+
+    async function refreshFlows() {
+        try {
+            const days = daysSelect ? daysSelect.value : {{ days }};
+            const resp = await fetch(
+                "{{ url_for('device_flows_json', device_id=device.id) }}?days=" + encodeURIComponent(days)
+            );
+
+            if (!resp.ok) {
+                console.error("flows_json failed:", resp.status);
+                return;
+            }
+
+            const flows = await resp.json();
+
+            if (!flowsBody || !Array.isArray(flows)) {
+                return;
+            }
+
+            flowsBody.innerHTML = "";
+
+            for (const f of flows) {
+                const tr = document.createElement("tr");
+
+                const src = (f.src_ip || "") + (f.src_port ? ":" + f.src_port : "");
+                const dst = (f.dst_ip || "") + (f.dst_port ? ":" + f.dst_port : "");
+
+                tr.innerHTML = `
+                    <td>${f.protocol || ""}</td>
+                    <td>${src}</td>
+                    <td>${dst}</td>
+                    <td>${f.packets ?? ""}</td>
+                    <td>${f.last_seen || ""}</td>
+                `;
+
+                flowsBody.appendChild(tr);
+            }
+        } catch (err) {
+            console.error("Error refreshing flows:", err);
+        }
+    }
+
+    if (daysSelect) {
+        daysSelect.addEventListener("change", function () {
+            refreshTraffic();
+            refreshFlows();
+        });
+    }
+
+    refreshTraffic();
+    refreshFlows();
+
+    setInterval(function () {
+        refreshTraffic();
+        refreshFlows();
+    }, 3000);
+});
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+

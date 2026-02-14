@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Smart Home IPS - Alerts</title>
+
+    <!-- Auto-refresh every 10 seconds -->
+    <meta http-equiv="refresh" content="10">
+
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+    >
+
+    <style>
+      body { font-size: 1.05rem; }
+      .card-header { font-weight: 600; }
+
+      .btn-ips {
+        background-color: #4b4b4b;
+        color: #ffffff;
+        border: none;
+      }
+      .btn-ips:hover {
+        background-color: #3a3a3a;
+        color: #ffffff;
+      }
+      .btn-ips-outline {
+        border: 1px solid #4b4b4b;
+        color: #4b4b4b;
+        background: transparent;
+      }
+      .btn-ips-outline:hover {
+        background-color: #4b4b4b;
+        color: white;
+      }
+
+      .navbar-nav .nav-link:hover {
+        color: #ffffff !important;
+        background-color: #333333;
+        border-radius: 6px;
+      }
+      .navbar-nav .nav-link.active {
+        font-weight: 600;
+      }
+    
+
+        .navbar-brand.fs-1 {
+            font-size: clamp(1.35rem, 3.2vw, 2.5rem) !important;
+        }
+        .brand-wrap {
+            display: inline-flex;
+            align-items: center;
+            gap: clamp(6px, 1.2vw, 12px);
+            flex-wrap: wrap;          
+        }
+        .brand-text {
+            line-height: 1.05;
+        }
+        .router-icon {
+            width: clamp(35px, 3.5vw, 60px);
+            height: auto;
+            flex: 0 0 auto;
+            opacity: 0.95;
+        }
+        @media (max-width: 576px) {
+            .brand-wrap { gap: 8px; }
+            .router-icon { width: 22px; }
+        }
+
+
+    </style>
+  </head>
+
+  <body class="bg-light">
+
+    <nav class="navbar navbar-expand-lg navbar-dark"
+         style="background-color:#1f1f1f; padding: 1rem 1rem;">
+      <div class="container-fluid px-4 px-lg-5">
+
+        <!-- Brand -->
+        <a class="navbar-brand fw-bold fs-1"
+           href="{{ url_for('index') }}"
+           style="letter-spacing:0.5px; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,0.55);">
+          <span class="brand-wrap"><span class="brand-text">Smart Home Router</span>
+      <svg class="router-icon" viewBox="0 0 64 64" fill="none"
+         xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect x="6" y="28" width="52" height="18" rx="3"
+            stroke="white" stroke-width="2"/>
+      <circle cx="18" cy="37" r="2" fill="white"/>
+      <circle cx="26" cy="37" r="2" fill="white"/>
+      <circle cx="34" cy="37" r="2" fill="white"/>
+      <line x1="20" y1="28" x2="14" y2="16"
+            stroke="white" stroke-width="2"/>
+      <line x1="32" y1="28" x2="32" y2="14"
+            stroke="white" stroke-width="2"/>
+      <line x1="44" y1="28" x2="50" y2="16"
+            stroke="white" stroke-width="2"/>
+    </svg>
+    </span>
+        </a>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                data-bs-target="#mainNavbar">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="mainNavbar">
+          <ul class="navbar-nav ms-auto align-items-lg-center">
+            <li class="nav-item">
+              <a class="nav-link {% if active_page=='devices' %}active fw-semibold{% endif %} fs-5 px-3"
+                 href="{{ url_for('index') }}">Devices</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if active_page=='firewall' %}active fw-semibold{% endif %} fs-5 px-3"
+                 href="{{ url_for('firewall_page') }}">Firewall</a>
+            </li>
+           
+            <li class="nav-item">
+              <a class="nav-link {% if active_page=='ips' %}active fw-semibold{% endif %} fs-5 px-3"
+                 href="{{ url_for('ips_dashboard') }}">IPS</a>
+            </li>
+             <li class="nav-item">
+	<a class="nav-link {% if active_page=='alerts' %}active fw-semibold{% endif %} fs-5 px-3"
+             href="{{ url_for('ips_alerts_live') }}">
+            Alerts
+            {% if has_unseen_alerts %}
+              <span class="badge bg-danger ms-2" title="New alerts">!</span>
+            {% endif %}
+          </a>
+            </li>
+            <li class="nav-item">
+              <a class="btn btn-sm btn-outline-danger ms-3 px-3 py-2 fw-semibold"
+                 href="{{ url_for('logout') }}">
+                Logout
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+
+    <div class="container-fluid px-4 px-lg-5 py-5">
+
+      <div class="mb-4">
+        <h1 class="h3 mb-1">IPS Alerts</h1>
+        <p class="text-muted mb-0">Most recent signature and anomaly alerts (auto-refreshes every 10 seconds).</p>
+      </div>
+
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span>Most Recent Alerts</span>
+          <div class="btn-group btn-group-sm">
+            <a href="{{ url_for('ips_dashboard') }}" class="btn btn-ips-outline">
+              Back to IPS
+            </a>
+            <a
+              href="{{ url_for('clear_ips_alerts') }}"
+              class="btn btn-outline-danger"
+              onclick="return confirm('Clear all alerts?');"
+            >
+              Clear All
+            </a>
+          </div>
+        </div>
+
+        <div class="card-body p-0">
+          {% if alerts %}
+          <div class="table-responsive">
+            <table class="table table-striped table-hover mb-0 align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>Time</th>
+                  <th>Type</th>
+                  <th>Device ID</th>
+                  <th>Message</th>
+                  <th>Protocol</th>
+                  <th>Src</th>
+                  <th>Dst</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for a in alerts %}
+                <tr>
+                  <td>{{ a.created_at|localdt("%Y-%m-%d %H:%M:%S") }}</td>
+
+                  <td>
+                    {% if a.alert_type == 'anomaly' %}
+                      <span class="badge text-bg-warning">anomaly</span>
+                    {% else %}
+                      <span class="badge text-bg-primary">signature</span>
+                    {% endif %}
+                  </td>
+                  <td>{{ a.device_id }}</td>
+                  <td>{{ a.message }}</td>
+                  <td>{{ a.protocol }}</td>
+                  <td>{{ a.src_ip }}{% if a.src_port %}:{{ a.src_port }}{% endif %}</td>
+                  <td>{{ a.dst_ip }}{% if a.dst_port %}:{{ a.dst_port }}{% endif %}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+          <p class="p-3 mb-0">No alerts yet.</p>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

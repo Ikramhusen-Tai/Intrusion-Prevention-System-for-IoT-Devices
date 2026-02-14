@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Smart Home IPS - Intrusion Prevention</title>
+
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+    >
+
+    <style>
+      body { font-size: 1.05rem; }
+
+      .card-header { font-weight: 600; }
+
+      .btn-ips {
+        background-color: #4b4b4b;
+        color: #ffffff;
+        border: none;
+      }
+      .btn-ips:hover {
+        background-color: #3a3a3a;
+        color: #ffffff;
+      }
+
+      .btn-ips-outline {
+        border: 1px solid #4b4b4b;
+        color: #4b4b4b;
+        background: transparent;
+      }
+      .btn-ips-outline:hover {
+        background-color: #4b4b4b;
+        color: white;
+      }
+
+      .navbar-nav .nav-link:hover {
+        color: #ffffff !important;
+        background-color: #333333;
+        border-radius: 6px;
+      }
+      .navbar-nav .nav-link.active {
+        font-weight: 600; !important;
+      }
+    
+
+        .navbar-brand.fs-1 {
+            font-size: clamp(1.35rem, 3.2vw, 2.5rem) !important;
+        }
+        .brand-wrap {
+            display: inline-flex;
+            align-items: center;
+            gap: clamp(6px, 1.2vw, 12px);
+            flex-wrap: wrap;         
+        }
+        .brand-text {
+            line-height: 1.05;
+        }
+        .router-icon {
+            width: clamp(35px, 3.5vw, 60px);
+            height: auto;
+            flex: 0 0 auto;
+            opacity: 0.95;
+        }
+        @media (max-width: 576px) {
+            .brand-wrap { gap: 8px; }
+            .router-icon { width: 22px; }
+        }
+
+
+    </style>
+  </head>
+
+  <body class="bg-light">
+
+    <!-- Global Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark"
+         style="background-color:#1f1f1f; padding: 1rem 1rem;">
+      <div class="container-fluid px-4 px-lg-5">
+
+        <!-- Brand -->
+        <a class="navbar-brand fw-bold fs-1"
+           href="{{ url_for('index') }}"
+           style="letter-spacing:0.5px; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,0.55);">
+          <span class="brand-wrap"><span class="brand-text">Smart Home Router</span>
+      <svg class="router-icon" viewBox="0 0 64 64" fill="none"
+         xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect x="6" y="28" width="52" height="18" rx="3"
+            stroke="white" stroke-width="2"/>
+      <circle cx="18" cy="37" r="2" fill="white"/>
+      <circle cx="26" cy="37" r="2" fill="white"/>
+      <circle cx="34" cy="37" r="2" fill="white"/>
+      <line x1="20" y1="28" x2="14" y2="16"
+            stroke="white" stroke-width="2"/>
+      <line x1="32" y1="28" x2="32" y2="14"
+            stroke="white" stroke-width="2"/>
+      <line x1="44" y1="28" x2="50" y2="16"
+            stroke="white" stroke-width="2"/>
+    </svg>
+    </span>
+        </a>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                data-bs-target="#mainNavbar">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="mainNavbar">
+          <ul class="navbar-nav ms-auto align-items-lg-center">
+            <li class="nav-item">
+              <a class="nav-link {% if active_page=='devices' %}active fw-semibold{% endif %} fs-5 px-3"
+                 href="{{ url_for('index') }}">Devices</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if active_page=='firewall' %}active fw-semibold{% endif %} fs-5 px-3"
+                 href="{{ url_for('firewall_page') }}">Firewall</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if active_page=='ips' %}active fw-semibold{% endif %} fs-5 px-3"
+                 href="{{ url_for('ips_dashboard') }}">IPS</a>
+            </li>
+            
+            <li class="nav-item">
+              <a class="nav-link {% if active_page=='alerts' %}active fw-semibold{% endif %} fs-5 px-3"
+   href="{{ url_for('ips_alerts_live') }}">
+  Alerts
+  {% if has_unseen_alerts %}
+    <span class="badge bg-danger ms-2" title="New alerts">!</span>
+  {% endif %}
+</a>
+         
+
+            </li>
+            
+            <li class="nav-item">
+              <a class="btn btn-sm btn-outline-danger ms-3 px-3 py-2 fw-semibold"
+                 href="{{ url_for('logout') }}">
+                Logout
+              </a>
+            </li>
+          </ul>
+        </div>
+
+      </div>
+    </nav>
+
+    <div class="container-fluid px-4 px-lg-5 py-5">
+
+      <!-- Header -->
+      <div class="mb-4">
+        <h1 class="h3 mb-1">Intrusion Prevention System (IPS)</h1>
+        <p class="text-muted mb-0">
+          Signature-based and Anomaly-based Protection for Smart Home Devices.
+        </p>
+      </div>
+
+      <div class="row mb-4">
+        <div class="col-12">
+          <div class="card h-100">
+            <div class="card-header">
+              Anomaly-Based IPS Settings
+            </div>
+
+            <div class="card-body">
+
+              <div class="row g-4 align-items-start">
+
+                <!-- Left: Threshold + duration + form -->
+                <div class="col-lg-8">
+
+                  <div class="small mb-3">
+                    <strong>Current Threshold:</strong>
+                    {{ "%.1f"|format(rate_threshold or 0.0) }} kbps
+                    <span class="text-muted mx-2">|</span>
+                    <strong>Throttle Duration:</strong>
+                    {{ throttle_minutes }} minute{{ "s" if throttle_minutes != 1 else "" }}
+                  </div>
+
+                  <!-- Update throttle duration + threshold -->
+                  <form method="post"
+                        action="{{ url_for('update_ips_settings') }}"
+                        class="row g-2 align-items-end">
+                    <div class="col-auto">
+                      <label for="throttle_minutes" class="form-label mb-0">
+                        Throttle Duration (minutes)
+                      </label>
+                      <input
+                        type="number"
+                        id="throttle_minutes"
+                        name="throttle_minutes"
+                        class="form-control form-control-sm"
+                        min="1"
+                        max="60"
+                        value="{{ throttle_minutes }}"
+                        required
+                      >
+                    </div>
+
+                    <div class="col-auto">
+                      <label for="rate_threshold_kbps" class="form-label mb-0">
+                        Rate Threshold (kbps)
+                      </label>
+                      <input
+                        type="number"
+                        id="rate_threshold_kbps"
+                        name="rate_threshold_kbps"
+                        class="form-control form-control-sm"
+                        min="100"
+                        max="1000000"
+                        step="100"
+                        value="{{ '%.0f'|format(rate_threshold or 0.0) }}"
+                        style="width: 140px;"
+                      />
+                    </div>
+
+                    <div class="col-auto">
+                      <button type="submit" class="btn btn-sm btn-ips mt-3">
+                        Update
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+                {% if throttled_devices %}
+<div class="col-lg-4">
+
+  <!-- Header row -->
+  <div class="d-flex justify-content-between align-items-end mb-2">
+    <div class="small fw-semibold">Throttled Devices</div>
+    <div class="small fw-semibold">Throttled Until</div>
+    <a href="{{ url_for('ips_alerts_live') }}"
+       class="small text-danger fw-semibold text-decoration-none">
+      View Alerts
+    </a>
+  </div>
+
+  <div class="list-group list-group-flush small">
+    {% for ip, expires_at in throttled_devices.items() %}
+      {% set dev = (devices | selectattr('ip','equalto', ip) | first) %}
+      <div class="list-group-item">
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="fw-semibold text-dark font-monospace">
+            {{ ip }}
+          </div>
+
+          <div class="text-muted text-nowrap ms-3">
+            {{ expires_at | localdt }}
+          </div>
+
+          {% if dev %}
+            <a href="{{ url_for('reset_throttle', device_id=dev.id) }}"
+               class="btn btn-sm btn-ips ms-3">
+              Reset
+            </a>
+          {% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+</div>
+{% endif %}
+
+
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 2: Signature rules (form + table) -->
+      <div class="row">
+        <div class="col-12">
+          <div class="card mb-4">
+            <div class="card-header">
+              Add Signature-Based IPS Rule
+            </div>
+            <div class="card-body">
+              <p class="small text-muted">
+                Create Rules that Trigger Alerts or Automatic Blocking
+              </p>
+
+              <form method="post"
+                    action="{{ url_for('add_ips_rule') }}"
+                    class="row g-3">
+
+                <!-- Device selection -->
+                <div class="col-md-3">
+                  <label class="form-label">Device</label>
+                  <select name="device_id" class="form-select form-select-sm">
+                    <option value="">Any device</option>
+                    {% for d in devices %}
+                      <option value="{{ d.id }}">
+                        {{ d.name or d.ip }} ({{ d.ip }})
+                      </option>
+                    {% endfor %}
+                  </select>
+                </div>
+
+                <!-- Device IP override -->
+                <div class="col-md-3">
+                  <label class="form-label">Device IP (override, optional)</label>
+                  <input
+                    type="text"
+                    name="device_ip"
+                    class="form-control form-control-sm"
+                    placeholder="10.42.0.23"
+                  >
+                </div>
+
+                <!-- Remote IP / CIDR -->
+                <div class="col-md-3">
+                  <label class="form-label">Remote</label>
+                  <input
+                    type="text"
+                    name="remote_ip"
+                    class="form-control form-control-sm"
+                    placeholder="203.0.113.5 or 203.0.113.0/24"
+                    required
+                  >
+                </div>
+
+                <!-- Remote port -->
+                <div class="col-md-3">
+                  <label class="form-label">Remote Port</label>
+                  <input
+                    type="number"
+                    name="remote_port"
+                    class="form-control form-control-sm"
+                    placeholder="80 or 443"
+                  >
+                </div>
+
+                <!-- Protocol -->
+                <div class="col-md-3">
+                  <label class="form-label">Protocol</label>
+                  <select name="protocol" class="form-select form-select-sm">
+                    <option value="any">Any</option>
+                    <option value="tcp">TCP</option>
+                    <option value="udp">UDP</option>
+                  </select>
+                </div>
+
+                <!-- Action -->
+                <div class="col-md-3">
+                  <label class="form-label">Action</label>
+                  <select name="action" class="form-select form-select-sm">
+                    <option value="alert_block">Alert + Block</option>
+                    <option value="alert_only">Alert only</option>
+                  </select>
+                </div>
+
+                <!-- Enabled -->
+                <div class="col-md-2">
+                  <label class="form-label d-block">Enabled</label>
+                  <div class="form-check">
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      id="enabled"
+                      name="enabled"
+                      checked
+                    >
+                    <label class="form-check-label" for="enabled">Yes</label>
+                  </div>
+                </div>
+
+                <!-- Description -->
+                <div class="col-md-4">
+                  <label class="form-label">Description (optional)</label>
+                  <input
+                    type="text"
+                    name="description"
+                    class="form-control form-control-sm"
+                    placeholder="e.g. Block camera to China IP range"
+                  >
+                </div>
+
+                <div class="col-12">
+                  <button type="submit" class="btn btn-ips btn-sm">
+                    Add IPS Rule
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Existing IPS rules -->
+          <div class="card mb-4">
+            <div class="card-header">
+              Existing IPS Rules
+            </div>
+            <div class="card-body p-0">
+              {% if rules %}
+                <div class="table-responsive">
+                  <table class="table table-striped table-hover table-sm mb-0 align-middle">
+                    <thead class="table-light">
+                      <tr>
+                        <th>ID</th>
+                        <th>Device</th>
+                        <th>Device IP</th>
+                        <th>Remote IP</th>
+                        <th>Port</th>
+                        <th>Protocol</th>
+                        <th>Action</th>
+                        <th>Enabled</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for r in rules %}
+                        <tr class="{% if not r.enabled %}table-secondary{% endif %}">
+                          <td>{{ r.id }}</td>
+                          <td>{{ r.device_id or "-" }}</td>
+                          <td>{{ r.device_ip or "-" }}</td>
+                          <td>{{ r.remote_ip or "-" }}</td>
+                          <td>{{ r.remote_port or "-" }}</td>
+                          <td>{{ r.protocol }}</td>
+                          <td>{{ r.action }}</td>
+                          <td>
+                            {% if r.enabled %}
+                              <span class="badge bg-success">On</span>
+                            {% else %}
+                              <span class="badge bg-secondary">Off</span>
+                            {% endif %}
+                          </td>
+                          <td class="text-nowrap">
+                            {{ r.created_at | localdt }}
+                          </td>
+                          <td class="text-nowrap">
+                            <a
+                              href="{{ url_for('toggle_ips_rule', rule_id=r.id) }}"
+                              class="btn btn-sm btn-ips-outline me-1"
+                            >
+                              Toggle
+                            </a>
+                            <a
+                              href="{{ url_for('delete_ips_rule', rule_id=r.id) }}"
+                              class="btn btn-sm btn-outline-danger"
+                              onclick="return confirm('Delete this IPS rule?');"
+                            >
+                              Delete
+                            </a>
+                          </td>
+                        </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              {% else %}
+                <p class="p-3 mb-0 small">
+                  No IPS rules yet. Use the form above to create your first rule.
+                </p>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Recent IPS Alerts -->
+          <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <span>Recent IPS Alerts</span>
+              <a href="{{ url_for('ips_alerts_live') }}" class="btn btn-sm btn-ips-outline">
+                Open Live Alerts View
+              </a>
+            </div>
+            <div class="card-body p-0">
+              {% if alerts %}
+                <div class="table-responsive">
+                  <table class="table table-sm table-striped table-hover mb-0">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Time</th>
+                        <th>Type</th>
+                        <th>Device</th>
+                        <th>Message</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for a in alerts[:10] %}
+                        <tr>
+                          <td class="text-nowrap">
+                            {{ a.created_at | localdt }}
+                          </td>
+                          <td>{{ a.alert_type }}</td>
+                          <td>{{ a.device_id or "-" }}</td>
+                          <td class="small">{{ a.message }}</td>
+                        </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              {% else %}
+                <p class="p-3 mb-0 small">
+                  No IPS alerts yet. Once rules match or anomalies are detected, they will appear here.
+                </p>
+              {% endif %}
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>
+
